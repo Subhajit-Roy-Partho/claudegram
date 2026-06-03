@@ -335,8 +335,8 @@ export async function sendToAgent(
   // Log in dangerous mode for security auditing
   logDangerousModeOperation(sessionKey, 'query', `prompt_length:${message.length} cwd:${session.workingDirectory}`);
 
-  // Determine model to use (default to 'opus' to match getModel() default)
-  const effectiveModel = model || chatModels.get(sessionKey) || 'opus';
+  // Determine model to use (default to 'sonnet' to match getModel() default)
+  const effectiveModel = model || chatModels.get(sessionKey) || 'sonnet';
 
   // Initialize timer for tracking query duration (watchdog created inside try with controller)
   const timer = createAgentTimer();
@@ -799,7 +799,7 @@ export function getModel(chatId: number): string {
       chatModels.set(String(chatId), model);
     }
   }
-  return model || 'opus';
+  return model || 'sonnet';
 }
 
 export function clearModel(chatId: number): void {
