@@ -6,7 +6,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const defaultEnvPath = path.resolve(__dirname, '..', '.env');
 const envPath = process.env.CLAUDEGRAM_ENV_PATH || defaultEnvPath;
-loadEnv({ path: envPath });
+loadEnv({ path: envPath, override: true });
 
 const toBool = (val: string) => val.toLowerCase() === 'true';
 
