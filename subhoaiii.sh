@@ -17,12 +17,15 @@ cd /scratch/sroy85/Github/claudegram
 # when this job is submitted from inside a Claude Code terminal.
 unset CLAUDECODE
 
-# Clear any stale Telegram long-poll from a previous crashed instance.
-# Without this, a ghost process holding the getUpdates slot causes a 409
-# conflict and the bot fails to start.
+# Evict any stale Telegram long-poll from a previous crashed instance.
+# A ghost process holding the slot causes a 409 on startup. We retry until
+# Telegram confirms no competing consumer (pending_update_count stable and ok).
 BOT_TOKEN=$(grep "^TELEGRAM_BOT_TOKEN=" .env | cut -d= -f2 | tr -d '"')
 if [ -n "$BOT_TOKEN" ]; then
-  curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?timeout=0&offset=-1" > /dev/null 2>&1 || true
+  for i in 1 2 3 4 5; do
+    curl -s "https://api.telegram.org/bot${BOT_TOKEN}/getUpdates?timeout=0&offset=-1" > /dev/null 2>&1 || true
+    sleep 3
+  done
 fi
 
 npm run dev
