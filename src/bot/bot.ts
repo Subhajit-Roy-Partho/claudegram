@@ -57,6 +57,7 @@ import {
 import { handleMessage } from './handlers/message.handler.js';
 import { handleVoice } from './handlers/voice.handler.js';
 import { handlePhoto, handleImageDocument } from './handlers/photo.handler.js';
+import { getHiddenTelegramCommandNames, getTelegramCommandList } from '../claude/command-parser.js';
 
 // Resolve sequentialize constraint: same-chat updates are ordered,
 // but /cancel is registered BEFORE this middleware so it bypasses it.
@@ -102,43 +103,13 @@ export async function createBot(): Promise<Bot> {
     rethrowInternalServerErrors: false, // Retry on 5xx errors
   }));
 
-  // Register command menu for autocomplete (non-blocking)
-  const commandList = [
-    { command: 'start', description: '🚀 Show help and getting started' },
-    { command: 'project', description: '📁 Set working directory' },
-    { command: 'newproject', description: '📁 Create a new project' },
-    { command: 'status', description: '📊 Show current session status' },
-    { command: 'clear', description: '🗑️ Clear conversation history' },
-    { command: 'cancel', description: '⏹️ Cancel current request' },
-    { command: 'softreset', description: '🔄 Soft reset (cancel + clear session)' },
-    { command: 'resume', description: '▶️ Resume a session' },
-    { command: 'continue', description: '▶️ Continue last session' },
-    { command: 'botstatus', description: '🩺 Show bot process status' },
-    { command: 'restartbot', description: '🔁 Restart the bot' },
-    { command: 'context', description: '🧠 Show Claude context usage' },
-    { command: 'plan', description: '📋 Start planning mode' },
-    { command: 'explore', description: '🔍 Explore codebase' },
-    { command: 'loop', description: '🔄 Run in loop mode' },
-    { command: 'sessions', description: '📚 View saved sessions' },
-    { command: 'teleport', description: '🚀 Move session to terminal' },
-    ...(config.REDDIT_ENABLED ? [{ command: 'reddit', description: '📡 Fetch Reddit posts & subreddits' }] : []),
-    ...(config.VREDDIT_ENABLED ? [{ command: 'vreddit', description: '🎬 Download Reddit video from post URL' }] : []),
-    ...(config.MEDIUM_ENABLED ? [{ command: 'medium', description: '📰 Fetch Medium articles' }] : []),
-    ...(config.TRANSCRIBE_ENABLED ? [{ command: 'transcribe', description: '🎤 Transcribe audio to text' }] : []),
-    ...(config.EXTRACT_ENABLED ? [{ command: 'extract', description: '📥 Extract text/audio/video from URL' }] : []),
-    { command: 'file', description: '📎 Download a file from project' },
-    { command: 'telegraph', description: '📄 View markdown with Instant View' },
-    { command: 'model', description: '🤖 Switch AI model' },
-    ...(config.OPENCODE_ENABLED ? [{ command: 'provider', description: '🔌 Switch AI provider' }] : []),
-    { command: 'mode', description: '⚙️ Toggle streaming mode' },
-    { command: 'terminalui', description: '🖥️ Toggle terminal-style display' },
-    { command: 'tts', description: '🔊 Toggle voice replies' },
-    { command: 'ping', description: '🏓 Check if bot is responsive' },
-    { command: 'commands', description: '📜 List all commands' },
-  ];
-
+  // Register command menu for autocomplete. This uses the same registry as /commands
+  // so Telegram's slash menu and the bot's help text do not drift apart.
+  const commandList = getTelegramCommandList();
   bot.api.setMyCommands(commandList).then(() => {
-    console.log('📋 Command menu registered');
+    const hidden = getHiddenTelegramCommandNames();
+    const hiddenSuffix = hidden.length > 0 ? ` (hidden by config: ${hidden.join(', ')})` : '';
+    console.log(`📋 Command menu registered (${commandList.length} commands)${hiddenSuffix}`);
   }).catch((err) => {
     console.warn('⚠️ Failed to register commands:', err.message);
   });

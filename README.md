@@ -13,8 +13,8 @@
 <br />
 
 ```
-  Telegram  ──▶  Grammy Bot  ──▶  Claude Agent SDK  ──▶  Your Machine
-  voice/text     command router     agentic runtime       bash, files, code
+  Telegram  ──▶  Grammy Bot  ──▶  Provider Router  ──▶  Local Agent Runtime
+  voice/text     command menu       Claude/OpenCode       bash, files, code
 ```
 
 </div>
@@ -23,9 +23,11 @@
 
 ## What is this?
 
-Claudegram bridges Telegram to a **full Claude Code agent** running locally on your machine. Send a message in Telegram — Claude reads your files, runs commands, writes code, browses Reddit, fetches Medium articles, transcribes voice notes, and speaks responses back. All from your phone.
+Claudegram bridges Telegram to a **full local AI agent** running on your machine. The primary runtime is Claude Code through the Claude Agent SDK. An optional OpenCode provider can also be enabled when you want to route work through other configured model providers, including OpenAI/Codex-compatible models if your OpenCode setup exposes them.
 
-This is not a simple API wrapper. It's the real Claude Code agent with tool access — Bash, file I/O, code editing, web browsing — packaged behind a Telegram interface with streaming responses, session memory, and rich output formatting.
+Send a message in Telegram and the agent can read your files, run commands, write code, fetch Reddit threads, fetch Medium articles, extract/transcribe media, and speak responses back. All from your phone.
+
+This is not a simple API wrapper. It is a real local agent runtime with tool access — Bash, file I/O, code editing, web/media helpers, session memory, provider/model preferences, and rich Telegram output formatting.
 
 ---
 
@@ -37,10 +39,11 @@ This is not a simple API wrapper. It's the real Claude Code agent with tool acce
 
 ### Agent Core
 - Full Claude Code with tool access (Bash, Read, Write, Edit, Glob, Grep)
+- Optional OpenCode provider for non-Claude model routing
 - Session resume across messages — Claude remembers everything
 - Project-based working directories
 - Streaming responses with live-updating messages
-- Model picker: Sonnet · Opus · Haiku
+- Provider-aware model picker
 - Plan mode, explore mode, loop mode
 
 ### Reddit Integration
@@ -108,7 +111,7 @@ This is not a simple API wrapper. It's the real Claude Code agent with tool acce
 
 | Requirement | Notes |
 |-------------|-------|
-| **Node.js 18+** | with npm |
+| **Node.js 20+** | with npm; matches `package.json` engine requirement |
 | **Claude Code CLI** | installed and authenticated — `claude` in your PATH |
 | **Telegram bot token** | from [@BotFather](https://t.me/botfather) |
 | **Your Telegram user ID** | from [@userinfobot](https://t.me/userinfobot) |
@@ -141,56 +144,87 @@ Open your bot in Telegram → `/start`
 
 ## Commands
 
+Telegram has two command surfaces:
+
+- The Telegram slash-command menu, registered at bot startup with `setMyCommands`.
+- The bot's own `/commands` response.
+
+Both are generated from the same command registry in `src/claude/command-parser.ts`, so they should stay in sync. Some commands are intentionally hidden when their feature flag is disabled. After changing `.env`, restart the bot so Telegram receives a fresh command menu.
+
 ### Session
 | Command | Description |
 |---------|-------------|
-| `/start` | Welcome message |
-| `/project` | Set working directory (interactive picker) |
-| `/newproject <name>` | Create and switch to a new project |
-| `/clear` | Clear conversation + session |
-| `/status` | Current session info |
-| `/sessions` | List saved sessions |
-| `/resume` | Pick from recent sessions |
-| `/continue` | Resume most recent session |
-| `/teleport` | Move session to terminal (forked) |
+| `/start` | Show welcome text, initial setup hints, and the current response mode. |
+| `/commands` | Show the full command list that is available under the current configuration. |
+| `/project` | Open the interactive project browser and set the current working directory. |
+| `/project <path>` | Set the working directory directly. Paths must remain inside `WORKSPACE_DIR`. |
+| `/newproject <name>` | Create a new project directory under `WORKSPACE_DIR` and switch to it. |
+| `/status` | Show current project, provider, model, session ID, dangerous-mode state, and usage when available. |
+| `/clear` | Clear the current conversation and session state after confirmation. |
+| `/sessions` | List saved sessions for the chat. |
+| `/resume` | Pick a recent saved session to resume. |
+| `/continue` | Resume the most recent saved session. |
+| `/teleport` | Show a terminal command for continuing the Claude session outside Telegram. |
 
 ### Agent Modes
 | Command | Description |
 |---------|-------------|
-| `/plan` | Plan mode for complex tasks |
-| `/explore` | Explore codebase to answer questions |
-| `/loop` | Run iteratively until task complete |
-| `/model` | Switch Sonnet / Opus / Haiku |
-| `/mode` | Toggle streaming / wait |
-| `/terminalui` | Toggle terminal-style display |
+| `/plan` | Ask the agent to create a plan for a complex task before execution. |
+| `/explore` | Ask the agent to inspect the current project and answer an architecture/codebase question. |
+| `/loop` | Run iteratively until the task is complete or `MAX_LOOP_ITERATIONS` is reached. |
+| `/model` | Open the model picker for the active provider. Claude shows Claude models; OpenCode shows configured OpenCode models. |
+| `/model <id>` | Set the active model directly by ID. |
+| `/provider` | Switch between `claude` and `opencode`. Hidden unless `OPENCODE_ENABLED=true`. |
+| `/mode` | Toggle between streaming responses and wait-for-completion responses. |
+| `/terminalui` | Toggle terminal-style progress output with tool status updates. |
 
 ### Content
 | Command | Description |
 |---------|-------------|
-| `/reddit` | Fetch Reddit posts, subreddits, profiles |
-| `/vreddit` | Download Reddit-hosted videos |
-| `/medium` | Fetch Medium articles via Freedium |
-| `/file` | Download a project file |
-| `/telegraph` | Toggle Instant View for long responses |
-| `/extract <url>` | Download media from YouTube, TikTok, Instagram |
+| `/reddit` | Fetch Reddit posts, subreddits, comments, or user profiles. Hidden unless `REDDIT_ENABLED=true`. |
+| `/vreddit` | Download Reddit-hosted videos and compress when needed. Hidden unless `VREDDIT_ENABLED=true`. |
+| `/medium` | Fetch Medium articles via the configured Freedium mirror. Hidden unless `MEDIUM_ENABLED=true`. |
+| `/file` | Download a file from the active project. |
+| `/telegraph` | Toggle Telegraph Instant View for long responses, or publish markdown as a Telegraph page. |
+| `/extract <url>` | Extract transcript, audio, video, or all outputs from YouTube, TikTok, or Instagram. Hidden unless `EXTRACT_ENABLED=true`. |
 
 ### Voice & TTS
 | Command | Description |
 |---------|-------------|
-| `/tts` | Toggle voice replies, pick voice |
-| `/transcribe` | Transcribe audio to text |
-| *Send voice note* | Auto-transcribed → processed by Claude |
+| `/tts` | Toggle voice replies, choose a voice, and toggle autoplay. |
+| `/transcribe` | Transcribe audio to text. Hidden unless `TRANSCRIBE_ENABLED=true`. |
+| *Send voice note* | Auto-transcribed and passed to the active agent when transcription is enabled. |
 
 ### Utility
 | Command | Description |
 |---------|-------------|
-| `/ping` | Health check |
-| `/context` | Show Claude context / token usage |
-| `/botstatus` | Bot process status |
-| `/restartbot` | Restart the bot |
-| `/cancel` | Cancel current request |
-| `/commands` | Show all commands |
-| `/softreset` | Soft reset (cancel + clear session) |
+| `/ping` | Health check that bypasses the per-chat queue. |
+| `/context` | Show Claude context/token usage for the current session. |
+| `/botstatus` | Show bot process status and uptime. |
+| `/restartbot` | Restart the bot through the control script after confirmation. |
+| `/cancel` | Cancel the current in-flight request without waiting for the queue. |
+| `/softreset` | Cancel the current request, clear the request queue, and clear current session history. |
+
+### Why a Command May Not Appear in Telegram
+
+The startup log now prints the registered command count and the commands hidden by configuration:
+
+```text
+Command menu registered (30 commands) (hidden by config: provider)
+```
+
+Expected hidden commands:
+
+| Command | Required setting |
+|---------|------------------|
+| `/provider` | `OPENCODE_ENABLED=true` |
+| `/reddit` | `REDDIT_ENABLED=true` |
+| `/vreddit` | `VREDDIT_ENABLED=true` |
+| `/medium` | `MEDIUM_ENABLED=true` |
+| `/extract` | `EXTRACT_ENABLED=true` |
+| `/transcribe` | `TRANSCRIBE_ENABLED=true` |
+
+If the log shows the command was registered but Telegram still does not show it, restart the Telegram client or reopen the bot chat. Telegram clients can cache bot command menus briefly.
 
 ---
 
@@ -252,6 +286,38 @@ TTS_RESPONSE_FORMAT=opus
 
 </details>
 
+<details>
+<summary><strong>OpenCode Provider — Claude plus OpenAI/Codex-capable model routing</strong></summary>
+
+Claudegram's default provider is `claude`. When `OPENCODE_ENABLED=true`, the bot registers `/provider` and lets each chat switch between:
+
+- `claude` — Claude Code SDK, the default local agent runtime.
+- `opencode` — OpenCode SDK, using the models/providers configured in OpenCode.
+
+This is the current path for using OpenAI/Codex-compatible model configurations from Telegram. Claudegram does not rename the internal provider to `codex`, because the implementation is OpenCode. If your OpenCode configuration exposes OpenAI or Codex-style models, they appear under `/model` after switching to `opencode`.
+
+```bash
+# .env
+OPENCODE_ENABLED=true
+
+# Optional: connect to an already-running OpenCode server
+OPENCODE_BASE_URL=http://localhost:4096
+
+# Optional: embedded/default OpenCode server port
+OPENCODE_PORT=4096
+```
+
+Usage flow:
+
+```text
+/provider   -> choose opencode
+/model      -> choose a model from OpenCode's configured provider list
+```
+
+If `/provider` is missing from Telegram's slash menu, check the startup log. It is hidden by design when `OPENCODE_ENABLED=false`.
+
+</details>
+
 ---
 
 ## Configuration Reference
@@ -272,11 +338,20 @@ All config lives in `.env`. See [`.env.example`](.env.example) for the full anno
 | `ANTHROPIC_API_KEY` | — | API key (optional with Claude Max subscription) |
 | `WORKSPACE_DIR` | `$HOME` | Root directory for project picker |
 | `CLAUDE_EXECUTABLE_PATH` | `claude` | Path to Claude Code CLI |
+| `CLAUDE_USE_BUNDLED_EXECUTABLE` | `true` | Use the Claude Agent SDK bundled executable for agent queries |
 | `BOT_NAME` | `Claudegram` | Bot name in system prompt |
 | `STREAMING_MODE` | `streaming` | `streaming` or `wait` |
 | `DANGEROUS_MODE` | `false` | Auto-approve all tool permissions |
 | `CANCEL_ON_NEW_MESSAGE` | `false` | Auto-cancel running query on new message |
-| `CLAUDE_SDK_LOG_LEVEL` | `off` | SDK log level: off, basic, verbose, trace |
+| `CLAUDE_SDK_LOG_LEVEL` | `basic` | SDK log level: off, basic, verbose, trace |
+
+### Provider Routing
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OPENCODE_ENABLED` | `false` | Enable `/provider` and the optional OpenCode provider |
+| `OPENCODE_BASE_URL` | — | URL of an already-running OpenCode server |
+| `OPENCODE_PORT` | `4096` | Port for embedded/default OpenCode server |
 
 ### Reddit
 
@@ -338,8 +413,14 @@ src/
 │   ├── session-manager.ts         # Per-chat session state
 │   ├── session-history.ts         # Session persistence and history
 │   ├── request-queue.ts           # Sequential request queue
-│   ├── command-parser.ts          # Help text + command descriptions
+│   ├── command-parser.ts          # Shared command registry, menu, help text
 │   └── agent-watchdog.ts          # Watchdog for long-running agent tasks
+├── providers/
+│   ├── provider-router.ts         # Per-chat provider selection and persistence
+│   ├── claude-provider.ts         # Claude provider adapter
+│   ├── opencode-provider.ts       # OpenCode provider adapter
+│   ├── user-preferences.ts        # Per-chat provider/model preferences
+│   └── types.ts                   # Provider interfaces
 ├── reddit/
 │   ├── redditfetch.ts             # Native TypeScript Reddit client (OAuth2)
 │   └── vreddit.ts                 # Reddit video download + compression pipeline
@@ -413,7 +494,7 @@ Then `/continue` or `/resume` in Telegram to restore your session.
 ## Security
 
 - **User whitelist** — only approved Telegram IDs can interact
-- **Project sandbox** — Claude operates within the configured working directory
+- **Project sandbox** — the active agent operates within the configured working directory
 - **Permission mode** — uses `acceptEdits` by default
 - **Dangerous mode** — opt-in auto-approve for all tool permissions
 - **Secrets** — loaded from `.env` (gitignored), never committed

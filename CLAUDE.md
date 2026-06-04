@@ -1,5 +1,7 @@
 # Claudegram Development Guidelines
 
+Codex-specific project guidance lives in `AGENTS.md`. Keep `CLAUDE.md` and `AGENTS.md` aligned when changing shared workflow, command-menu behavior, provider guidance, or documentation requirements.
+
 ## Website Maintenance (MANDATORY)
 
 **ALWAYS update `docs/index.html` when adding features, commands, or contributors.** This is a required step in every PR that changes functionality. Do not commit feature/command changes without the corresponding website update.
