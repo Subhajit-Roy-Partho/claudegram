@@ -13,6 +13,7 @@ set -euo pipefail
 
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
 [ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
+export PATH="$HOME/.opencode/bin:/scratch/sroy85/Software/.local/bin:$PATH"
 
 cd /scratch/sroy85/Github/claudegram
 

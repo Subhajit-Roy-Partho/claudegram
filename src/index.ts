@@ -26,26 +26,28 @@ async function main() {
   console.log('📱 Send /start in Telegram to begin');
 
   let attempt = 0;
+  let activeRunner: ReturnType<typeof run> | undefined;
+  let shuttingDown = false;
+
+  const shutdown = async () => {
+    if (shuttingDown) return;
+    shuttingDown = true;
+    console.log('\n👋 Shutting down...');
+    allowSleep();
+    stopCleanup();
+    await activeRunner?.stop();
+    process.exit(0);
+  };
+
+  process.on('SIGINT', () => { shutdown(); });
+  process.on('SIGTERM', () => { shutdown(); });
+
   while (true) {
     // Start concurrent runner — updates are processed in parallel,
     // with per-chat ordering enforced by the sequentialize middleware in bot.ts.
     // This lets /cancel bypass the per-chat queue and interrupt running queries.
     const runner = run(bot);
-
-    // Graceful shutdown (guarded against duplicate signals)
-    let shuttingDown = false;
-    const shutdown = async () => {
-      if (shuttingDown) return;
-      shuttingDown = true;
-      console.log('\n👋 Shutting down...');
-      allowSleep();
-      stopCleanup();
-      await runner.stop();
-      process.exit(0);
-    };
-
-    process.on('SIGINT', () => { shutdown(); });
-    process.on('SIGTERM', () => { shutdown(); });
+    activeRunner = runner;
 
     try {
       // Keep alive until the runner stops (crash or explicit stop)
@@ -58,6 +60,10 @@ async function main() {
       if (is409 && attempt < RETRY_409_DELAYS_MS.length) {
         const delay = RETRY_409_DELAYS_MS[attempt++];
         console.error(`[409] Another instance is running — retrying in ${delay / 1000}s...`);
+        await runner.stop();
+        if (activeRunner === runner) {
+          activeRunner = undefined;
+        }
         await sleep(delay);
         continue;
       }

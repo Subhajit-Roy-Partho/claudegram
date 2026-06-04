@@ -14,7 +14,7 @@
 
 ```
   Telegram  ──▶  Grammy Bot  ──▶  Provider Router  ──▶  Local Agent Runtime
-  voice/text     command menu       Claude/OpenCode       bash, files, code
+  voice/text     command menu       Claude/OpenCode/Codex bash, files, code
 ```
 
 </div>
@@ -23,7 +23,7 @@
 
 ## What is this?
 
-Claudegram bridges Telegram to a **full local AI agent** running on your machine. The primary runtime is Claude Code through the Claude Agent SDK. An optional OpenCode provider can also be enabled when you want to route work through other configured model providers, including OpenAI/Codex-compatible models if your OpenCode setup exposes them.
+Claudegram bridges Telegram to a **full local AI agent** running on your machine. The primary runtime is Claude Code through the Claude Agent SDK. Optional OpenCode and Codex CLI providers can also be enabled when you want to route work through other configured model providers or run OpenAI Codex models directly through `codex exec`.
 
 Send a message in Telegram and the agent can read your files, run commands, write code, fetch Reddit threads, fetch Medium articles, extract/transcribe media, and speak responses back. All from your phone.
 
@@ -39,7 +39,7 @@ This is not a simple API wrapper. It is a real local agent runtime with tool acc
 
 ### Agent Core
 - Full Claude Code with tool access (Bash, Read, Write, Edit, Glob, Grep)
-- Optional OpenCode provider for non-Claude model routing
+- Optional OpenCode and Codex CLI providers for non-Claude model routing
 - Session resume across messages — Claude remembers everything
 - Project-based working directories
 - Streaming responses with live-updating messages
@@ -172,9 +172,9 @@ Both are generated from the same command registry in `src/claude/command-parser.
 | `/plan` | Ask the agent to create a plan for a complex task before execution. |
 | `/explore` | Ask the agent to inspect the current project and answer an architecture/codebase question. |
 | `/loop` | Run iteratively until the task is complete or `MAX_LOOP_ITERATIONS` is reached. |
-| `/model` | Open the model picker for the active provider. Claude shows Claude models; OpenCode shows configured OpenCode models. |
+| `/model` | Open the model picker for the active provider. Claude shows Claude models; OpenCode shows curated presets plus configured OpenCode models; Codex shows Codex CLI models. |
 | `/model <id>` | Set the active model directly by ID. |
-| `/provider` | Switch between `claude` and `opencode`. Hidden unless `OPENCODE_ENABLED=true`. |
+| `/provider` | Switch between `claude`, `opencode`, and `codex`. Hidden unless `OPENCODE_ENABLED=true` or `CODEX_ENABLED=true`. |
 | `/mode` | Toggle between streaming responses and wait-for-completion responses. |
 | `/terminalui` | Toggle terminal-style progress output with tool status updates. |
 
@@ -210,14 +210,14 @@ Both are generated from the same command registry in `src/claude/command-parser.
 The startup log now prints the registered command count and the commands hidden by configuration:
 
 ```text
-Command menu registered (30 commands) (hidden by config: provider)
+Command menu registered (31 commands)
 ```
 
 Expected hidden commands:
 
 | Command | Required setting |
 |---------|------------------|
-| `/provider` | `OPENCODE_ENABLED=true` |
+| `/provider` | `OPENCODE_ENABLED=true` or `CODEX_ENABLED=true` |
 | `/reddit` | `REDDIT_ENABLED=true` |
 | `/vreddit` | `VREDDIT_ENABLED=true` |
 | `/medium` | `MEDIUM_ENABLED=true` |
@@ -287,34 +287,43 @@ TTS_RESPONSE_FORMAT=opus
 </details>
 
 <details>
-<summary><strong>OpenCode Provider — Claude plus OpenAI/Codex-capable model routing</strong></summary>
+<summary><strong>OpenCode and Codex CLI Providers</strong></summary>
 
-Claudegram's default provider is `claude`. When `OPENCODE_ENABLED=true`, the bot registers `/provider` and lets each chat switch between:
+Claudegram's default provider is `claude`. When `OPENCODE_ENABLED=true` or `CODEX_ENABLED=true`, the bot registers `/provider` and lets each chat switch between enabled providers:
 
 - `claude` — Claude Code SDK, the default local agent runtime.
-- `opencode` — OpenCode SDK, using the models/providers configured in OpenCode.
+- `opencode` — OpenCode SDK, using curated top model presets plus the models/providers configured in OpenCode.
+- `codex` — Codex CLI, using `codex exec` in the active project directory.
 
-This is the current path for using OpenAI/Codex-compatible model configurations from Telegram. Claudegram does not rename the internal provider to `codex`, because the implementation is OpenCode. If your OpenCode configuration exposes OpenAI or Codex-style models, they appear under `/model` after switching to `opencode`.
+OpenCode is useful when you want one provider surface for OpenAI, Anthropic, Google, DeepSeek, Qwen, xAI, and OpenCode-hosted models. Codex CLI is useful when you want to run OpenAI Codex directly with local Codex configuration and auth.
 
 ```bash
 # .env
 OPENCODE_ENABLED=true
+OPENCODE_INCLUDE_PRESET_MODELS=true
 
 # Optional: connect to an already-running OpenCode server
 OPENCODE_BASE_URL=http://localhost:4096
 
 # Optional: embedded/default OpenCode server port
 OPENCODE_PORT=4096
+
+# Optional: direct Codex CLI provider
+CODEX_ENABLED=true
+CODEX_EXECUTABLE_PATH=/home/username/.local/bin/codex
+CODEX_DEFAULT_MODEL=gpt-5.5
+CODEX_EPHEMERAL=true
+CODEX_SANDBOX=workspace-write
 ```
 
 Usage flow:
 
 ```text
-/provider   -> choose opencode
-/model      -> choose a model from OpenCode's configured provider list
+/provider   -> choose claude, opencode, or codex
+/model      -> choose a model for the active provider
 ```
 
-If `/provider` is missing from Telegram's slash menu, check the startup log. It is hidden by design when `OPENCODE_ENABLED=false`.
+If `/provider` is missing from Telegram's slash menu, check the startup log. It is hidden by design when both `OPENCODE_ENABLED=false` and `CODEX_ENABLED=false`.
 
 </details>
 
@@ -350,8 +359,15 @@ All config lives in `.env`. See [`.env.example`](.env.example) for the full anno
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `OPENCODE_ENABLED` | `false` | Enable `/provider` and the optional OpenCode provider |
+| `OPENCODE_INCLUDE_PRESET_MODELS` | `true` | Add curated top models before live OpenCode models |
 | `OPENCODE_BASE_URL` | — | URL of an already-running OpenCode server |
 | `OPENCODE_PORT` | `4096` | Port for embedded/default OpenCode server |
+| `CODEX_ENABLED` | `false` | Enable `/provider` and direct Codex CLI support |
+| `CODEX_EXECUTABLE_PATH` | `codex` | Path to Codex CLI |
+| `CODEX_DEFAULT_MODEL` | `gpt-5.5` | Default model for Codex CLI provider |
+| `CODEX_EPHEMERAL` | `true` | Run `codex exec` without persisting session state |
+| `CODEX_SANDBOX` | `workspace-write` | Codex CLI sandbox mode |
+| `CODEX_TIMEOUT_MS` | `0` | Optional Codex timeout in milliseconds; `0` disables timeout |
 
 ### Reddit
 
@@ -419,6 +435,7 @@ src/
 │   ├── provider-router.ts         # Per-chat provider selection and persistence
 │   ├── claude-provider.ts         # Claude provider adapter
 │   ├── opencode-provider.ts       # OpenCode provider adapter
+│   ├── codex-provider.ts          # Codex CLI provider adapter
 │   ├── user-preferences.ts        # Per-chat provider/model preferences
 │   └── types.ts                   # Provider interfaces
 ├── reddit/

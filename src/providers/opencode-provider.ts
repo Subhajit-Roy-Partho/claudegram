@@ -32,6 +32,39 @@ function clearPersistedModel(chatId: number): void {
 // Cached model list (refreshed on /model)
 let cachedModels: ModelInfo[] | undefined;
 
+const OPENCODE_PRESET_MODELS: ModelInfo[] = [
+  { id: 'openai/gpt-5.3-codex', label: 'GPT-5.3 Codex', description: 'OpenAI Codex coding' },
+  { id: 'openai/gpt-5.2-codex', label: 'GPT-5.2 Codex', description: 'OpenAI Codex long-horizon coding' },
+  { id: 'openai/gpt-5.5', label: 'GPT-5.5', description: 'OpenAI frontier reasoning' },
+  { id: 'anthropic/claude-opus-4-5', label: 'Claude Opus 4.5', description: 'Anthropic highest capability' },
+  { id: 'anthropic/claude-sonnet-4-5', label: 'Claude Sonnet 4.5', description: 'Anthropic balanced coding' },
+  { id: 'google/gemini-3.1-pro-preview', label: 'Gemini 3.1 Pro Preview', description: 'Google top reasoning' },
+  { id: 'google/gemini-2.5-pro', label: 'Gemini 2.5 Pro', description: 'Google stable pro model' },
+  { id: 'google/gemini-2.5-flash', label: 'Gemini 2.5 Flash', description: 'Google fast model' },
+  { id: 'xai/grok-4-fast', label: 'Grok 4 Fast', description: 'xAI fast reasoning' },
+  { id: 'deepseek/deepseek-v3.2', label: 'DeepSeek V3.2', description: 'DeepSeek coding/reasoning' },
+  { id: 'qwen/qwen3-coder', label: 'Qwen3 Coder', description: 'Qwen coding model' },
+  { id: 'opencode/deepseek-v4-flash-free', label: 'DeepSeek V4 Flash Free', description: 'OpenCode free model' },
+  { id: 'opencode/minimax-m3-free', label: 'MiniMax M3 Free', description: 'OpenCode free model' },
+  { id: 'opencode/nemotron-3-super-free', label: 'Nemotron 3 Super Free', description: 'OpenCode free model' },
+  { id: 'opencode/big-pickle', label: 'Big Pickle', description: 'OpenCode hosted model' },
+];
+
+function mergePresetModels(models: ModelInfo[]): ModelInfo[] {
+  if (!config.OPENCODE_INCLUDE_PRESET_MODELS) return models;
+
+  const seen = new Set<string>();
+  const merged: ModelInfo[] = [];
+
+  for (const model of [...OPENCODE_PRESET_MODELS, ...models]) {
+    if (seen.has(model.id)) continue;
+    seen.add(model.id);
+    merged.push(model);
+  }
+
+  return merged;
+}
+
 async function fetchModels(): Promise<ModelInfo[]> {
   const c = await getClient();
   const result = await c.config.providers();
@@ -60,8 +93,8 @@ async function fetchModels(): Promise<ModelInfo[]> {
     }
   }
 
-  cachedModels = models;
-  return models;
+  cachedModels = mergePresetModels(models);
+  return cachedModels;
 }
 
 // Singleton client + optional server handle

@@ -4,7 +4,7 @@ This file is the Codex-facing project guide. `CLAUDE.md` is still kept for Claud
 
 ## Project Summary
 
-Claudegram is a TypeScript Telegram bot that connects Telegram chats to a local agent runtime. The default runtime is Claude Code through `@anthropic-ai/claude-agent-sdk`. The project also has an optional OpenCode provider path that can expose other model providers, including OpenAI/Codex-compatible model configurations when OpenCode is installed and configured by the user.
+Claudegram is a TypeScript Telegram bot that connects Telegram chats to a local agent runtime. The default runtime is Claude Code through `@anthropic-ai/claude-agent-sdk`. The project also has optional OpenCode and Codex CLI provider paths for non-Claude routing.
 
 The bot is not a stateless API wrapper. It manages Telegram authentication, per-chat sessions, project directories, long-running agent requests, streaming message updates, media tools, voice transcription, TTS replies, Telegraph output, and provider/model preferences.
 
@@ -35,26 +35,34 @@ Important configuration:
 - `CLAUDE_SDK_LOG_LEVEL`: `off`, `basic`, `verbose`, or `trace`.
 - `DANGEROUS_MODE`: auto-approves tool permissions and must be treated as high risk.
 
-### OpenCode / Codex-Capable Routing
+### OpenCode And Codex CLI Routing
 
-The optional provider implementation is named `opencode` in code because it uses `@opencode-ai/sdk`.
+The optional OpenCode provider uses `@opencode-ai/sdk`. The optional Codex provider shells out to `codex exec`.
 
 Enable it with:
 
 ```bash
 OPENCODE_ENABLED=true
+OPENCODE_INCLUDE_PRESET_MODELS=true
 OPENCODE_PORT=4096
 # OPENCODE_BASE_URL=http://localhost:4096
+
+CODEX_ENABLED=true
+CODEX_EXECUTABLE_PATH=/home/username/.local/bin/codex
+CODEX_DEFAULT_MODEL=gpt-5.5
+CODEX_EPHEMERAL=true
+CODEX_SANDBOX=workspace-write
 ```
 
 When enabled:
 
 - `/provider` appears in the Telegram slash menu and `/commands`.
-- Users can switch between `claude` and `opencode`.
+- Users can switch between `claude`, `opencode`, and `codex` depending on enabled providers.
 - `/model` becomes provider-aware.
-- OpenCode supplies the model list from its own provider configuration. If OpenCode is configured with OpenAI/Codex-compatible models, those models are selected through `/model`.
+- OpenCode supplies curated top presets plus the model list from its own provider configuration.
+- Codex supplies a curated Codex/OpenAI model list and runs requests through `codex exec`.
 
-Do not rename the internal provider type from `opencode` to `codex` unless the implementation actually changes to a direct Codex/OpenAI provider. For documentation, it is fine to describe this as "OpenCode / Codex-capable routing" when explaining how users can reach OpenAI/Codex models.
+Keep provider-specific behavior isolated in `src/providers/*-provider.ts`. Do not route Codex CLI requests through OpenCode unless the user explicitly chooses `opencode`; the direct Codex CLI implementation is the `codex` provider.
 
 ## Command Menu Source Of Truth
 
@@ -76,7 +84,7 @@ If a command is added, removed, renamed, or feature-gated, update the command re
 
 Feature-gated commands currently include:
 
-- `/provider`: hidden unless `OPENCODE_ENABLED=true`.
+- `/provider`: hidden unless `OPENCODE_ENABLED=true` or `CODEX_ENABLED=true`.
 - `/reddit`: hidden unless `REDDIT_ENABLED=true`.
 - `/vreddit`: hidden unless `VREDDIT_ENABLED=true`.
 - `/medium`: hidden unless `MEDIUM_ENABLED=true`.
@@ -111,6 +119,7 @@ src/
 │   ├── provider-router.ts         # Active provider selection and persistence
 │   ├── claude-provider.ts         # Claude provider adapter
 │   ├── opencode-provider.ts       # OpenCode provider adapter
+│   ├── codex-provider.ts          # Codex CLI provider adapter
 │   ├── user-preferences.ts        # Per-chat provider/model preferences
 │   └── types.ts                   # Provider interfaces
 ├── media/

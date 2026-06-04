@@ -212,10 +212,30 @@ const envSchema = z.object({
     .string()
     .default('false')
     .transform((val) => val.toLowerCase() === 'true'),
+  OPENCODE_INCLUDE_PRESET_MODELS: z
+    .string()
+    .default('true')
+    .transform((val) => val.toLowerCase() === 'true'),
   OPENCODE_BASE_URL: z.string().optional(),
   OPENCODE_PORT: z
     .string()
     .default('4096')
+    .transform((val) => parseInt(val, 10)),
+  // Codex CLI provider integration
+  CODEX_ENABLED: z
+    .string()
+    .default('false')
+    .transform((val) => val.toLowerCase() === 'true'),
+  CODEX_EXECUTABLE_PATH: z.string().default('codex'),
+  CODEX_DEFAULT_MODEL: z.string().default('gpt-5.5'),
+  CODEX_EPHEMERAL: z
+    .string()
+    .default('true')
+    .transform((val) => val.toLowerCase() === 'true'),
+  CODEX_SANDBOX: z.enum(['read-only', 'workspace-write', 'danger-full-access']).default('workspace-write'),
+  CODEX_TIMEOUT_MS: z
+    .string()
+    .default('0')
     .transform((val) => parseInt(val, 10)),
 });
 

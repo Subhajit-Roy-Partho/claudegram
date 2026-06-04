@@ -119,9 +119,9 @@ const COMMAND_DEFINITIONS: CommandDefinition[] = [
   {
     command: 'provider',
     description: 'Switch AI provider',
-    help: 'Switch provider between Claude and OpenCode',
+    help: 'Switch provider between Claude, OpenCode, and Codex CLI',
     section: 'Agent Commands',
-    enabled: () => config.OPENCODE_ENABLED,
+    enabled: () => config.OPENCODE_ENABLED || config.CODEX_ENABLED,
   },
   {
     command: 'reddit',

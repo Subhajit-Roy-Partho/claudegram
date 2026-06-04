@@ -1393,6 +1393,11 @@ export async function handleProviderCommand(ctx: Context): Promise<void> {
 
   const providers = getAvailableProviders();
   const active = getActiveProviderName(chatId);
+  const descriptions: Record<ProviderName, string> = {
+    claude: '*claude* \\- Claude Code SDK \\(Anthropic\\)',
+    opencode: '*opencode* \\- OpenCode SDK with configured providers and top model presets',
+    codex: '*codex* \\- Codex CLI via `codex exec`',
+  };
 
   const keyboard = providers.map((p) => {
     const label = p === active ? `✓ ${p}` : p;
@@ -1400,7 +1405,7 @@ export async function handleProviderCommand(ctx: Context): Promise<void> {
   });
 
   await ctx.reply(
-    `🔌 *Select Provider*\n\n_Current: ${esc(active)}_\n\n• *claude* \\- Claude Code SDK \\(Anthropic\\)\n• *opencode* \\- OpenCode \\(75\\+ LLM providers\\)`,
+    `🔌 *Select Provider*\n\n_Current: ${esc(active)}_\n\n${providers.map((p) => `• ${descriptions[p]}`).join('\n')}`,
     {
       parse_mode: 'MarkdownV2',
       reply_markup: {
@@ -1740,9 +1745,10 @@ export async function handleTeleport(ctx: Context): Promise<void> {
   if (!keyInfo) return;
   const { sessionKey } = keyInfo;
   const { chatId } = parseSessionKey(sessionKey);
+  const provider = getActiveProviderName(chatId);
 
-  if (getActiveProviderName(chatId) === 'opencode') {
-    await replyMd(ctx, 'ℹ️ `/teleport` is not available for the OpenCode provider\\.');
+  if (provider !== 'claude') {
+    await replyMd(ctx, `ℹ️ \`/teleport\` is only available for the Claude provider\\. Current provider: *${esc(provider)}*\\.`);
     return;
   }
 

@@ -1,4 +1,4 @@
-export type ProviderName = 'claude' | 'opencode';
+export type ProviderName = 'claude' | 'opencode' | 'codex';
 
 export interface AgentUsage {
   inputTokens: number;

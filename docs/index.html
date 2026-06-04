@@ -1560,6 +1560,16 @@
                   <td>Enable /extract command (default: true)</td>
                   <td class="required-no">No</td>
                 </tr>
+                <tr>
+                  <td class="var-name">OPENCODE_ENABLED</td>
+                  <td>Enable OpenCode provider switching with /provider (default: false)</td>
+                  <td class="required-no">No</td>
+                </tr>
+                <tr>
+                  <td class="var-name">CODEX_ENABLED</td>
+                  <td>Enable Codex CLI provider switching with /provider (default: false)</td>
+                  <td class="required-no">No</td>
+                </tr>
                 <tr><td colspan="3" style="color: var(--neon-cyan); font-weight: 600; padding-top: 1.25rem;">TTS Configuration</td></tr>
                 <tr>
                   <td class="var-name">TTS_PROVIDER</td>
@@ -1718,12 +1728,12 @@
           <div class="feature-card" data-category="core">
             <div class="feature-icon">🧠</div>
             <h3>Model Picker</h3>
-            <p>Switch between Claude models (Opus, Sonnet, Haiku) with /model. Default: Opus for best results.</p>
+            <p>Switch models with /model. The picker adapts to the active Claude, OpenCode, or Codex CLI provider.</p>
           </div>
           <div class="feature-card" data-category="core">
             <div class="feature-icon">🔌</div>
             <h3>Provider Switching</h3>
-            <p>Switch between Claude and OpenCode with /provider. Access 75+ LLM providers when Claude is unavailable.</p>
+            <p>Switch between Claude, OpenCode, and Codex CLI with /provider. Use curated OpenCode presets or run Codex directly through codex exec.</p>
           </div>
           <div class="feature-card" data-category="session">
             <div class="feature-icon">🚀</div>
@@ -1858,7 +1868,7 @@
           <div class="commands-grid">
             <div class="command-row">
               <code class="command-code">/provider</code>
-              <span class="command-desc">Switch AI provider (Claude / OpenCode)</span>
+              <span class="command-desc">Switch AI provider (Claude / OpenCode / Codex CLI)</span>
             </div>
             <div class="command-row">
               <code class="command-code">/model</code>
