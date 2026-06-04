@@ -1,17 +1,24 @@
-#!/bin/sh
+#!/usr/bin/env bash
 #SBATCH -q private
 #SBATCH -p general
 #SBATCH -t 7-00:00
 #SBATCH -c 4
 #SBATCH -o memo.out
 #SBATCH -e memo.err
+#SBATCH --open-mode=truncate
 #SBATCH -J subhomemo
 #SBATCH --mem=20GB
 
+set -euo pipefail
+
 export NVM_DIR="${NVM_DIR:-$HOME/.nvm}"
-[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+[ -s "$NVM_DIR/nvm.sh" ] && source "$NVM_DIR/nvm.sh"
 
 cd /scratch/sroy85/Github/claudegram
+
+echo "[SLURM] Starting Claudegram from $(pwd)"
+echo "[SLURM] Commit: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
+echo "[SLURM] Node: ${SLURMD_NODENAME:-unknown}"
 
 # Prevent "nested Claude Code session" rejection — CLAUDECODE is inherited
 # when this job is submitted from inside a Claude Code terminal.
@@ -28,4 +35,4 @@ if [ -n "$BOT_TOKEN" ]; then
   done
 fi
 
-npm run dev
+exec npm run dev
