@@ -8,6 +8,7 @@
 #SBATCH --open-mode=append
 #SBATCH -J subhomemo
 #SBATCH --mem=20GB
+#SBATCH -G 1
 #SBATCH --requeue
 #SBATCH --signal=B:USR1@120
 
