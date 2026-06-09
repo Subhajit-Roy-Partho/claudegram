@@ -5,9 +5,11 @@
 #SBATCH -c 4
 #SBATCH -o memo.out
 #SBATCH -e memo.err
-#SBATCH --open-mode=truncate
+#SBATCH --open-mode=append
 #SBATCH -J subhomemo
 #SBATCH --mem=20GB
+#SBATCH --requeue
+#SBATCH --signal=B:USR1@120
 
 set -euo pipefail
 
@@ -20,10 +22,18 @@ cd /scratch/sroy85/Github/claudegram
 echo "[SLURM] Starting Claudegram from $(pwd)"
 echo "[SLURM] Commit: $(git rev-parse --short HEAD 2>/dev/null || echo unknown)"
 echo "[SLURM] Node: ${SLURMD_NODENAME:-unknown}"
+echo "[SLURM] JobID: ${SLURM_JOB_ID:-unknown}"
 
 # Prevent "nested Claude Code session" rejection — CLAUDECODE is inherited
 # when this job is submitted from inside a Claude Code terminal.
 unset CLAUDECODE
+
+# Resubmit self when preempted (SIGUSR1 sent 120s before kill, or on requeue signal).
+_resubmit() {
+  echo "[SLURM] Preempted — resubmitting job at $(date)"
+  sbatch "$0"
+}
+trap '_resubmit' USR1
 
 # Evict any stale Telegram long-poll from a previous crashed instance.
 # A ghost process holding the slot causes a 409 on startup. We retry until
@@ -36,4 +46,6 @@ if [ -n "$BOT_TOKEN" ]; then
   done
 fi
 
-exec npm run dev
+npm run dev &
+NPM_PID=$!
+wait $NPM_PID

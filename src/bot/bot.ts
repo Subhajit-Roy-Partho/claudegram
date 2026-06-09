@@ -142,7 +142,7 @@ export async function createBot(): Promise<Bot> {
 
   bot.command('commands', handleCommands);
   bot.command('model', handleModelCommand);
-  if (config.OPENCODE_ENABLED) {
+  if (config.OPENCODE_ENABLED || config.CODEX_ENABLED) {
     bot.command('provider', handleProviderCommand);
   }
   bot.command('plan', handlePlan);
